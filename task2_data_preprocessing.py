@@ -1,11 +1,92 @@
+# All the necessary packages are imported
 import json
 import pandas as pd
+import os
 
-filename = r"C:\ProgFiles\IIT-PATNA\Trendpulse-SanjayKumarDupati\data/hacker_news_stories_20260412_230659.json"
-with open(filename, "r") as f:
-    data = json.load(f)
+# Filename to import the collected stories from the previous task.
+filename = r"data\trends_20260413.json"
 
-df = pd.DataFrame(data)
-print(df)
+# Python function to load the collected stories from the JSON file.
+def load_stories(filename):
+        
+    # Opening the file in read mode and loading the data from the file using built-in json.load() method.
+    with open(filename, "r") as f:
+        # Data is loaded from the file and stored in the variable 'data'
+        data = json.load(f)
 
-print("Duplicate entries: ", df.duplicated().sum())
+    # JSON data is conveted into pandas DataFrame for easier manipulation and analysis
+    df = pd.DataFrame(data)
+    # Prints the total number of stories loaded from the JSON file
+    print(f"Loaded {len(df)} stories from {filename}")
+    print()
+
+    # Returns the dataframe
+    return df
+
+# Python function to perform data preprocessing on the loaded stories.
+def preprocess_stories(df):
+
+    # To remove the duplicate stories based on the 'post_id' column.
+    # This ensures that we have only unique stories in our dataset.
+    df = df.drop_duplicates(subset="post_id")
+    # Prints the length of dataframe after removing duplicates
+    print(f"After removing duplicates: {len(df)}")
+
+    # Removes the stories from the dataframe which have null values either in 'post_id', 'title' or 'score' columns. 
+    df = df.dropna(subset=["post_id", "title", "score"])
+    # Prints the length of dataframe after removing the stories with null values in above mentioned columns.
+    print(f"After dropping nulls: {len(df)}")
+
+    # pandas provide a built-in method to convert the data type of a column to numeric.
+    # errors="coerce" argument is used to convert any non-numeric values to NaN, which are then handled in the next line.
+    df["score"] = pd.to_numeric(df["score"], errors="coerce")
+    # Similarly, we convert the 'num_comments' column to numeric and handle non-numeric values by converting them to NaN.
+    df["num_comments"] = df["num_comments"].fillna(0).astype(int)
+
+    # Drops the records with score less than 5.
+    df = df[df["score"] >= 5]
+    # Prints the length of dataframe after removing the stories with score less than 5.
+    print(f'After removing low scores: {len(df)}')
+    print()
+
+    # Remove any leading or trailing whitespace characters from the 'title' column using the built-in str.strip() method
+    df["title"] = df["title"].str.strip()
+
+    return df
+
+# A python function to save the cleaned stories into CSV file
+def save_cleaned_stories(df, filename):
+    # checks if a folder named data is already present of not. If not, then it creates a folder named data
+    if not os.path.exists("data"):
+        os.mkdir("data")
+
+    # Saves the cleaned dataframe into a csv file using the built-in to_csv() method.
+    df.to_csv(filename)
+
+    # Prints the total nnumber of rows saved to the CSV file.
+    print(f"Saved {len(df)} rows to {filename}")
+    print()
+
+
+# Pythons main function. Handles everything
+def main():
+
+    # Calls the function 'load_stories' to load the collected stories from the JSON file and the resultis stored in the variable 'df'
+    df = load_stories(filename)
+
+    # Pre-processes the loaded stories and loads the cleaned stories into the variable 'clean_df'
+    clean_df = preprocess_stories(df)
+
+    # File name to save the cleaned stories in CSV format
+    file = r"data/trends_clean.csv"
+    # Calls the function to save the cleaned stories into a CSV file
+    save_cleaned_stories(clean_df, file)
+
+    # Prints the summary of the cleaned stories by showing the count of stories in each category.
+    print("Stories per category: ")
+    print(clean_df["category"].value_counts())
+
+
+# The main function is called to execute the entire process
+if __name__ == "__main__":
+    main()

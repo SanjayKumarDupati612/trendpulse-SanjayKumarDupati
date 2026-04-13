@@ -28,6 +28,9 @@ def fetch_ids_of_top_stories():
     try:
        url = f"{BASE_URL}/topstories.json"
        response = requests.get(url, headers=HEADERS)
+       # After making a request to the given API/URL checks if it failed using raise_for_status()
+       # If failed, then jumps to except block to handle it gracefully
+       # Else parse JSON
        response.raise_for_status()
        return response.json()[:500]
     # If any run-time error(Exception more formally) arises, then it would be gracefully handled by the except block
@@ -46,9 +49,7 @@ def fetch_each_story(story_id):
         # For each iteration, only the details of one story is fetched, and then immediately returned to the invoker
         response = requests.get(url, headers=HEADERS)
 
-        # After making a request to the given API/URL checks if it failed using raise_for_status()
-        # If failed, then jumps to except block to handle it gracefully
-        # Else parse JSON
+        
         response.raise_for_status()
         return response.json()
     
@@ -71,10 +72,14 @@ def categorization(title):
     # Iterating through the keys, values of list in the CATEGORIES dictionary
     for category, keywords in CATEGORIES.items():
 
+        # Iterating through the list of keywords for each category
         for keyword in keywords:
+
+            # Checking if any of the keywords are present in the title of the story
             if keyword in title:
+                
+                # If present, then the category is added to the list of matched categories for that story
                 matched.append(category)
-        # If at all any value matches with the given title, then the story is categorized under {category}
                 break
     
     # If the title doesn't match any keyword, then Nothing is returned, and it is categorized under nothing
@@ -85,26 +90,41 @@ def collect_stories(story_ids):
     category_counts = {cat : [] for cat in CATEGORIES.keys()}
 
     print("Fetching individual story details")
+
+    # An empty list to store the details of all the storie that are successfully fetched
     fetched_stories = []
 
+    # Iterating through the list of story IDs, fetching the details of each story
     for story_id in story_ids:
+
+        # Extracting the ID of story 
         story = fetch_each_story(story_id)
         if story and story.get("type") == "story" and story.get("title"):
+
+            # If the storu is successfully fetched, and if its type is story and having a title for it
+            # then it is added to the list of fetched stories
             fetched_stories.append(story)
 
     print(f"Fetched {len(fetched_stories)} valid stories.")
 
+    # Iterating through the categories one by one
     for category in CATEGORIES.keys():
 
     # Iterating through the story_ids one by one
         for story in fetched_stories:
             
+            # Checking if the number of stories collected for that particular category has reached the maximum limit of 25 or not.
             if len(category_counts[category]) >= CATEGORY_MAX:
+                # If it has reached the limit, then we break out the loop and move to the next category
                 break
-
+            
+            # Gets the list of associated categories for that stories based on the title
             matched_categories = categorization(story.get("title"))
 
+            # If the category of the story matches with the current category that we are iterating 
             if category in matched_categories:
+
+                # then we add the details of that story to the list of stories for that category in the category_counts dictionary
                 category_counts[category].append({
                     "post_id": story.get("id"),
                     "title": story.get("title"),
@@ -114,19 +134,32 @@ def collect_stories(story_ids):
                     "author": story.get("by", ""),
                     "collected_at": datetime.now().isoformat(),
                 })
+        
+        # Finally we print the number of stories collected for each category
         print(f"{category}: {len(category_counts[category])} stories collected.")
+
+        # Before moving to the next category, we wait for 2 seconds to avoid hitting the API rate limits
+        # And not to overload the servers with too many requests in a short span of time
         time.sleep(2)
 
     all_stories = [story for stories in category_counts.values() for story in stories]
     return all_stories
 
 
+# A python function to save the collected stories in a JSON file
 def save_stories(stories):
+
+    # Checks if a folder named data is already present of not
     if not os.path.exists("data"):
+        # If not, then it creates a folder named data
         os.makedirs("data")
 
-    filename = f"data/hacker_news_stories_{datetime.now().strftime('%Y%m%d_%H%M%S')}.json"
+    # filname to store the collected stories in JSON format
+    filename = f"data/trends_{datetime.now().strftime('%Y%m%d')}.json"
+
+    # Opening the file in write mode. This enables to overwrite the existing file contents if any
     with open(filename, "w") as f:
+        # Dumping the list of collected stories into the file in JSON format with an indentation of 4 spaces for better readability
         json.dump(stories, f, indent=4)
     return filename
 
@@ -136,14 +169,20 @@ def main():
 
     # Calls the function 'fetch_ids_of_top_stories' and the result (Stories IDs) are stored in the variable story_ids
     story_ids = fetch_ids_of_top_stories()
+
+    # If no stories are fetched, then error message is printed and the program is exited gracefully without any further execution
     if not story_ids:
         print("No story IDs fetched. Exiting.")
         return
     
+    # Details of all the stories are collected by calling the function 'collect_stories' and passing the story IDs as an argument.
+    # The result (Details of all the stories) are stored in the variable 'stories'
     stories = collect_stories(story_ids)
         
+    # This method saved the all the extracted stories in a JSON file and gets the filename where the stories are saved
     filename = save_stories(stories)
 
+    # Prints the total number of stories collected and saved into the JSON file.
     print(f"Collected {len(stories)} stories. Saved to the file {filename}")
 
 # The main function is called to execute the entire process

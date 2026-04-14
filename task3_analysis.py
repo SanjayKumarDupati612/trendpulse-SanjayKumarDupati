@@ -21,8 +21,8 @@ def load_and_explore_data(filename):
     # Calculates the mean score and average number of comments for the stories
     avg_score = df["score"].mean()
     avg_comments = df["num_comments"].mean()
-    print(f"\nAverage score: {avg_score}")
-    print(f"Average comments: {avg_comments}")
+    print(f"\nAverage score: {round(avg_score, 2)}")
+    print(f"Average comments: {round(avg_comments, 2)}")
 
     # Finally returns the DataFrame
     return df
